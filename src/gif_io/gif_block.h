@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <span>
 
 namespace gif {
 class Block;
@@ -34,7 +35,7 @@ public:
 	virtual ~Block() { }
 
 	// Generic utility to read blocks
-	size_t					readSubBlocks(const std::vector<char> &buffer, size_t position);
+	size_t					readSubBlocks(const std::span<const char> buffer, size_t position);
 
 	std::vector<DataRef>	mSubBlocks;
 };
@@ -53,7 +54,7 @@ public:
 
 	bool					hasTransparentColor() const { return (mFlags&TRANSPARENT_COLOR_F) != 0; }
 
-	size_t					read(const std::vector<char> &buffer, size_t position);
+	size_t					read(const std::span<const char> buffer, size_t position);
 
 	uint32_t				mFlags = 0;
 	Disposal				mDisposal = Disposal::kUnspecified;

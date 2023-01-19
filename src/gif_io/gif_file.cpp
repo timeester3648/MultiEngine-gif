@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <span>
 
 #include <unordered_map>
 #include <vector>
@@ -24,7 +25,7 @@ size_t				color_count(const size_t encoded) {
 	return static_cast<size_t>(std::pow(2, encoded+1));
 }
 
-int32_t				read_2_byte_int(const std::vector<char> &buffer, size_t &position) {
+int32_t				read_2_byte_int(const std::span<const char> buffer, size_t &position) {
 	uint8_t		a = buffer[position++],
 				b = buffer[position++];
 	return (b<<8) | a;
@@ -44,7 +45,7 @@ void				write_2_byte_int(const int16_t value, std::ostream &output) {
 	output << a << b;
 }
 
-std::string			read_string(const std::vector<char> &buffer, const size_t size, size_t &position) {
+std::string			read_string(const std::span<const char> buffer, const size_t size, size_t &position) {
 	std::stringstream	buf;
 	for (size_t k=0; k<size; ++k) buf << buffer[position++];
 	return buf.str();
@@ -71,7 +72,7 @@ struct ColorTable {
 		for (const auto& p : vec) mColors.push_back(p.first);
 	}
 
-	size_t			read(const std::vector<char> &buffer, const size_t count, size_t position) {
+	size_t			read(const std::span<const char> buffer, const size_t count, size_t position) {
 		for (size_t k=0; k<count; ++k) {
 			const uint8_t	r = buffer[position++],
 							g = buffer[position++],
@@ -149,7 +150,7 @@ struct Header {
 
 	bool			isGif() const { return mSig == SIG; }
 
-	size_t			read(const std::vector<char> &buffer, size_t position) {
+	size_t			read(const std::span<const char> buffer, size_t position) {
 		mSig = read_string(buffer, 3, position);
 
 		std::string	v = read_string(buffer, 3, position);
@@ -180,7 +181,7 @@ struct LogicalScreen {
 
 	bool			hasGlobalColorTable() const { return (mFlags&GLOBAL_COLOR_TABLE_F) != 0; }
 
-	size_t			read(const std::vector<char> &buffer, size_t position) {
+	size_t			read(const std::span<const char> buffer, size_t position) {
 		// Screen size
 		mScreenWidth = read_2_byte_int(buffer, position);
 		mScreenHeight = read_2_byte_int(buffer, position);
@@ -250,7 +251,7 @@ public:
 	ColorTable				mColorTable;
 
 	// We are past the image separator byte here
-	size_t					read(const std::vector<char> &buffer, size_t position, BlockReadArgs &bra) {
+	size_t					read(const std::span<const char> buffer, size_t position, BlockReadArgs &bra) {
 		const ColorTable*	ct = &bra.mGlobalColorTable;
 
 		// Image descriptor
@@ -293,7 +294,7 @@ public:
 	AppExtension() { }
 
 	// We are past the introducer and app bytes here
-	size_t			read(const std::vector<char> &buffer, size_t position) {
+	size_t			read(const std::span<const char> buffer, size_t position) {
 		uint8_t		block_size = buffer[position++];
 		if (block_size != 11) throw std::runtime_error("AppExtension has illegal Block Size");
 
@@ -311,7 +312,7 @@ class BlockList {
 public:
 	BlockList() { }
 
-	size_t			read(const uint8_t byte1, const std::vector<char> &buffer, size_t position, BlockReadArgs &bra) {
+	size_t			read(const uint8_t byte1, const std::span<const char> buffer, size_t position, BlockReadArgs &bra) {
 		// Select between:
 		//		Image Descriptor				- 0x2c (image)
 		//		Graphic Control Extension		- 0x21 (extension), 0xf9 (graphic control)
@@ -436,6 +437,53 @@ bool Reader::read(gif::ListConstructor &constructor) {
 		}
 		constructor.readerFinished();
 	} catch (std::exception const &ex) {
+		std::cout << "Error in gif::Reader::read()=" << ex.what() << std::endl;
+	}
+	return false;
+}
+
+MemoryReader::MemoryReader(const void* data, size_t size)
+	: data(data), size(size) {
+}
+
+bool MemoryReader::read(gif::ListConstructor& constructor) {
+	try {
+		std::span<const char> buffer{ reinterpret_cast<const char*>(this->data), this->size };
+
+		Header				header;
+		LogicalScreen		screen;
+		ColorTable			globalColorTable;
+		BlockList			blocks;
+
+		size_t				pos = 0;
+
+		// Header
+		if (buffer.size() < 6) throw std::runtime_error("No header");
+		pos = header.read(buffer, pos);
+		if (!header.isGif()) throw std::runtime_error("Header signature is not GIF");
+		if (header.mVersion == Version::kMissing) throw std::runtime_error("Header has no version");
+
+		// Logical Screen
+		pos = screen.read(buffer, pos);
+
+		// Global color table
+		if (screen.hasGlobalColorTable()) {
+			pos = globalColorTable.read(buffer, color_count(screen.mSizeOfGlobalColorTable), pos);
+		}
+
+		BlockReadArgs		bra(screen.mScreenWidth, screen.mScreenHeight, globalColorTable, constructor);
+		while (pos < buffer.size()) {
+			const uint8_t	byte1 = buffer[pos++];
+			if (byte1 == 0x3b) {
+				// Trailer, success
+				constructor.readerFinished();
+				return true;
+			} else {
+				pos = blocks.read(byte1, buffer, pos, bra);
+			}
+		}
+		constructor.readerFinished();
+	} catch (std::exception const& ex) {
 		std::cout << "Error in gif::Reader::read()=" << ex.what() << std::endl;
 	}
 	return false;

@@ -40,6 +40,20 @@ private:
 	std::string			mPath;
 };
 
+class MemoryReader {
+public:
+	MemoryReader(const void* data, size_t size);
+
+	// Given a file path, load all frames of data to output.
+	// This peforms no validation that the file is valid.
+	// Answer false on error.
+	bool				read(gif::ListConstructor& output);
+
+private:
+	const void* data;
+	size_t size;
+};
+
 /**
  * @class gif::WriterSettings
  * @brief Private internal class.
@@ -102,6 +116,11 @@ private:
 	std::ofstream			mStream;
 	WriterBuffer			mBlockBuffer;
 };
+
+// Private writing API
+void		write_header(const gif::WriterSettings&, std::ostream& output);
+void		write_table_based_image(const gif::WriterSettings&, const gif::Bitmap&, const PalettedBitmap&,
+									LzwWriter&, WriterBuffer&, std::ostream& output);
 
 /**
  * @class gif::Writer
@@ -169,11 +188,6 @@ void WriterT<T>::writeFrame(const T &t) {
 	if (mPalettedBitmap.empty()) throw std::runtime_error("gif::Writer<T>::writeFrame() failed to convert to paletted bitmap");
 	write_table_based_image(mSettings, mPixels, mPalettedBitmap, mLzwWriter, mBlockBuffer, mStream);
 }
-
-// Private writing API
-void		write_header(const gif::WriterSettings&, std::ostream &output);
-void		write_table_based_image(const gif::WriterSettings&, const gif::Bitmap&, const PalettedBitmap&,
-									LzwWriter&, WriterBuffer&, std::ostream &output);
 
 } // namespace gif
 

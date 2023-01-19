@@ -5,3 +5,9 @@ Release
 Debug
 /vc2013/*.opensdf
 /vc2013/*.user
+
+# exclude project files
+**.sln
+**.vcxproj
+**.vcxproj.user
+**.vcxproj.filters

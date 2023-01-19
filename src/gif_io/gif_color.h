@@ -42,7 +42,7 @@ struct Palette {
 		// Expand
 		size_t					last_size = max_size;
 		for (size_t bits=8; bits>=2; --bits) {
-			const size_t		size = 1<<bits;
+			const size_t		size = 1ull<<bits;
 			if (mColors.size() >= size) {
 				mColors.resize(last_size);
 				return;
@@ -58,7 +58,7 @@ struct Palette {
 
 namespace std {
 template<>
-struct hash<gif::ColorA8u> : public unary_function<gif::ColorA8u, size_t> {
+struct hash<gif::ColorA8u> {
 	std::size_t operator()(const gif::ColorA8u& c) const {
 		return	(static_cast<size_t>(c.r) << 24)
 				 | (static_cast<size_t>(c.g) << 16)

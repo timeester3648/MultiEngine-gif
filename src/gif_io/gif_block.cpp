@@ -1,11 +1,13 @@
 #include "gif_block.h"
 
+#include <stdexcept>
+
 namespace gif {
 
 /**
  * @class gif::Block
  */
-size_t Block::readSubBlocks(const std::vector<char> &buffer, size_t position) {
+size_t Block::readSubBlocks(const std::span<const char> buffer, size_t position) {
 	// Read data blocks, first byte is block size, 0 is the terminator
 	uint8_t				block_size = 0;
 	while ( (block_size = buffer[position++]) != 0) {
@@ -22,7 +24,7 @@ size_t Block::readSubBlocks(const std::vector<char> &buffer, size_t position) {
 /**
  * @class gif::GraphicControlExtension
  */
-size_t GraphicControlExtension::read(const std::vector<char> &buffer, size_t position) {
+size_t GraphicControlExtension::read(const std::span<const char> buffer, size_t position) {
 	// We are past the introducer and GCE bytes here
 	uint8_t				block_size = buffer[position++];
 	if (block_size != 4) throw std::runtime_error("GraphicControlExtension has illegal Block Size");

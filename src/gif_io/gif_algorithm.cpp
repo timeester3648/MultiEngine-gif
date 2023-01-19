@@ -129,7 +129,7 @@ public:
 
 		auto		dst = pbm.mPixels.begin();
 		for (const auto& c : bm.mPixels) {
-			*dst = tci->match(c);
+			*dst = static_cast<uint8_t>(tci->match(c));
 			++dst;
 		}
 

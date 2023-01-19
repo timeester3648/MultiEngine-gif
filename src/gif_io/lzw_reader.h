@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
+#include <span>
 
 namespace gif {
 
@@ -16,9 +17,9 @@ https://golang.org/src/image/gif/reader.go
  */
 class LzwReader {
 public:
-	using Container = std::vector<char>;
+	using Container = std::span<const char>;
 	using Iter = Container::iterator;
-	using CIter = Container::const_iterator;
+	using CIter = Container::iterator;
 
 	LzwReader() { }
 

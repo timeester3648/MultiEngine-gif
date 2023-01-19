@@ -53,6 +53,8 @@ void LzwWriter::encode(const std::vector<uint8_t> &bm) {
 		uint32_t		literal = *bm_it;
 		uint32_t		key = (code<<8) | literal;
 
+		IncError ierr;
+
 		// If there is a hash table hit for this key then we continue the loop
 		// and do not emit a code yet.
 		uint32_t		hash = (key>>12 ^ key) & TABLE_MASK;
@@ -75,7 +77,7 @@ void LzwWriter::encode(const std::vector<uint8_t> &bm) {
 		code = literal;
 		// Increment e.hi, the next implied code. If we run out of codes, reset
 		// the encoder state (including clearing the hash table) and continue.
-		const IncError		ierr = incHi();
+		ierr = incHi();
 		if (ierr != IncError::kNone) {
 			if (ierr == IncError::kOutOfCodes) {
 				goto endloop;
